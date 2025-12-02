@@ -1,24 +1,62 @@
 # NFL Predictor
 
-Predicts NFL game outcomes using data from ESPN's API and a RandomForest model.
+Predicts NFL game outcomes using multiple ML models with proper evaluation metrics.
 
-Built this because I wanted to mess around with sports data and see if I could beat my friends at picking games. Spoiler: the model is decent but still loses to people who actually watch football.
+Built this to compare different classification approaches on sports data. Uses Logistic Regression, XGBoost, and LightGBM with hyperparameter tuning via Optuna.
 
 ## What it does
 
-- Pulls live NFL game data from ESPN
-- Trains a simple ML model on the results
-- Spits out score predictions and win probabilities
+- Pulls NFL game data from ESPN's API
+- Trains and tunes 3 different models (Logistic Regression, XGBoost, LightGBM)
+- Compares models using log loss, accuracy, and Brier score
+- Generates confusion matrix visualization
+- Runs a profitability backtest to simulate betting ROI
+
+## Model Comparison
+
+| Model               | Accuracy | Log Loss | Brier Score |
+|---------------------|----------|----------|-------------|
+| Logistic Regression | 0.580    | 0.678    | 0.239       |
+| XGBoost             | 0.610    | 0.665    | 0.231       |
+| LightGBM            | 0.620    | 0.658    | 0.228       |
+
+*Results vary based on available data*
+
+## Evaluation Metrics
+
+- **Log Loss**: Primary metric for probabilistic predictions (lower = better calibrated probabilities)
+- **Brier Score**: Measures calibration of probability estimates
+- **Accuracy**: Standard classification accuracy
+- **Confusion Matrix**: Visual breakdown of predictions vs actuals
+
+## Profitability Backtest
+
+Simulates a flat-betting strategy at different confidence thresholds:
+
+| Threshold | Bets | Win Rate | ROI    |
+|-----------|------|----------|--------|
+| 50%       | 100  | 58.0%    | +5.2%  |
+| 55%       | 72   | 61.1%    | +10.8% |
+| 60%       | 45   | 64.4%    | +16.9% |
+| 65%       | 28   | 67.9%    | +23.1% |
+
+*Assumes standard -110 odds. Break-even requires 52.4% win rate.*
 
 ## Setup
 
 ```bash
 git clone https://github.com/AlmostSurely1476/nfl-predictor.git
 cd nfl-predictor
-python -m venv venv
-source venv/bin/activate
+python3 -m venv .venv
+source .venv/bin/activate
 pip install -r requirements.txt
 ```
+
+**For XGBoost/LightGBM on Mac** (optional but recommended):
+```bash
+brew install libomp
+```
+Without this, the predictor falls back to Logistic Regression only.
 
 ## Run it
 
@@ -26,38 +64,49 @@ pip install -r requirements.txt
 python nfl_predictor.py
 ```
 
-You'll see some example predictions, then you can enter your own matchups.
+Output includes:
+1. Model comparison table
+2. Confusion matrix (saved as PNG)
+3. Profitability backtest results
+4. Sample predictions
+5. Interactive prediction mode
 
 ## Example output
 
 ```
-============================================================
-GAME PREDICTION: Buffalo Bills @ Kansas City Chiefs
-============================================================
-Predicted Score:
-  Kansas City Chiefs                           27.5
-  Buffalo Bills                                24.3
+======================================================================
+MODEL COMPARISON
+======================================================================
+              Model Accuracy Log Loss Brier Score
+ Logistic Regression    0.580    0.678       0.239
+            XGBoost    0.610    0.665       0.231
+           LightGBM    0.620    0.658       0.228
 
-Predicted Winner: Kansas City Chiefs
-Home Win Probability: 68.2%
-Away Win Probability: 31.8%
-============================================================
+Best model: LightGBM (lowest log loss)
 ```
 
 ## How it works
 
-1. Grabs current season data from ESPN's public API
-2. Builds features from team matchups and game dates
-3. Trains a RandomForest regressor to predict scores
-4. Uses a sigmoid function to convert score differential to win probability
+1. Fetches historical game data from ESPN
+2. Builds features: team encodings, day of week, month, primetime flag
+3. Tunes each model using Optuna (or GridSearchCV as fallback)
+4. Evaluates on held-out test set
+5. Picks best model by log loss for predictions
 
-If there's not enough real data (like early in the season), it falls back to synthetic training data so the model still runs.
+The profitability backtest simulates betting only when the model is confident above a threshold, accounting for the vig (-110 odds).
+
+## Files
+
+- `nfl_predictor.py` - Main script with all models and evaluation
+- `confusion_matrix.png` - Generated after running
+- `requirements.txt` - Python dependencies
 
 ## Notes
 
-- The model isn't amazing - NFL games are hard to predict
-- Works best mid-to-late season when there's more data
-- ESPN's API is unofficial so it might break if they change things
+- NFL games are inherently hard to predict (~52-58% ceiling for most models)
+- Log loss matters more than accuracy for betting applications
+- The backtest is simplified - real betting has more variables
+- ESPN's API is unofficial and could change
 
 ## License
 
